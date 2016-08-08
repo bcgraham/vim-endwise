@@ -22,7 +22,7 @@ augroup endwise " {{{1
         \ let b:endwise_pattern = '.*[^.:@$]\zs\<\%(do\(:\)\@!\|fn\)\>\ze\%(.*[^.:@$]\<end\>\)\@!' |
         \ let b:endwise_syngroups = 'elixirBlockDefinition'
   autocmd FileType ruby
-        \ let b:endwise_addition = 'end' |
+        \ let b:endwise_addition = "end" |
         \ let b:endwise_words = 'module,class,def,if,unless,case,while,until,begin,do' |
         \ let b:endwise_pattern = '^\(.*=\)\?\s*\%(private\s\+\|protected\s\+\|public\s\+\|module_function\s\+\)*\zs\%(module\|class\|def\|if\|unless\|case\|while\|until\|for\|\|begin\)\>\%(.*[^.:@$]\<end\>\)\@!\|\<do\ze\%(\s*|.*|\)\=\s*$' |
         \ let b:endwise_syngroups = 'rubyModule,rubyClass,rubyDefine,rubyControl,rubyConditional,rubyRepeat'
@@ -149,7 +149,7 @@ function! s:crend(always)
   let col  = match(getline(lnum),beginpat) + 1
   let word  = matchstr(getline(lnum),beginpat)
   let endword = substitute(word,'.*',b:endwise_addition,'')
-  let y = n.endword."\<C-O>O"
+  let y = n.endword."\n\<C-O>kO"
   if b:endwise_addition[0:1] ==# '\='
     let endpat = '\w\@<!'.endword.'\w\@!'
   else
@@ -163,11 +163,16 @@ function! s:crend(always)
     return n
   endif
   let line = s:mysearchpair(beginpat,endpat,synpat)
+  " last in block checks if this shouldn't add a newline
+  let last_in_block = (line == lnum + 2) && (strlen(matchstr(getline(line),'^\s*')) <= strlen(space))
   " even is false if no end was found, or if the end found was less
   " indented than the current line
   let even = strlen(matchstr(getline(line),'^\s*')) >= strlen(space)
   if line == 0
     let even = 0
+  endif
+  if !even && last_in_block
+    return substitute(y, "[\nk]", "", 'g')
   endif
   if !even && line == line('.') + 1
     return y
